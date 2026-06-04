@@ -109,6 +109,15 @@ input:focus { box-shadow: 0 0 0 2px var(--color-border-info); }
 .float-top-bottom { left: var(--position); animation: top-bottom 20s; }
 .float-diagonal-down { animation: diagonal-down 22s; }
 .float-diagonal-up { animation: diagonal-up 24s; }
+.floating-food .float-boss {
+  color: #7c3aed;
+  font-size: clamp(15px, 2.5vw, 24px);
+  font-weight: 900;
+  white-space: nowrap;
+  opacity: .42;
+  text-shadow: 0 2px 8px rgba(255,255,255,.9);
+  animation: boss-tour 19s linear -6s infinite;
+}
 
 @keyframes left-right { from { transform: translateX(-80px) rotate(0); } to { transform: translateX(calc(100vw + 80px)) rotate(540deg); } }
 @keyframes right-left { from { transform: translateX(calc(100vw + 80px)) rotate(0); } to { transform: translateX(-80px) rotate(-540deg); } }
@@ -116,6 +125,13 @@ input:focus { box-shadow: 0 0 0 2px var(--color-border-info); }
 @keyframes top-bottom { from { transform: translateY(-80px) rotate(0); } to { transform: translateY(calc(100vh + 80px)) rotate(-480deg); } }
 @keyframes diagonal-down { from { transform: translate(-80px, -80px) rotate(0); } to { transform: translate(calc(100vw + 80px), calc(100vh + 80px)) rotate(720deg); } }
 @keyframes diagonal-up { from { transform: translate(calc(100vw + 80px), calc(100vh + 80px)) rotate(0); } to { transform: translate(-80px, -80px) rotate(-720deg); } }
+@keyframes boss-tour {
+  0% { transform: translate(-260px, 22vh) rotate(-8deg); }
+  45% { transform: translate(calc(100vw + 40px), 65vh) rotate(8deg); }
+  50% { transform: translate(calc(100vw + 40px), 65vh) rotate(188deg); }
+  95% { transform: translate(-260px, 22vh) rotate(172deg); }
+  100% { transform: translate(-260px, 22vh) rotate(352deg); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .floating-food { display: none; }

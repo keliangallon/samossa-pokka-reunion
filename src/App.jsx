@@ -66,6 +66,7 @@ function FloatingFood() {
       {floaters.map(([emoji, animation, position, delay], index) => (
         <span key={index} className={animation} style={{ "--position": position, "--delay": delay }}>{emoji}</span>
       ))}
+      <span className="float-boss">Kélian le boss ultime</span>
     </div>
   );
 }
