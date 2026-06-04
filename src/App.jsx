@@ -26,8 +26,6 @@ const CRITERIA = {
   pokka: [
     ["taste", "Goût"],
     ["freshness", "Fraîcheur"],
-    ["texture", "Texture"],
-    ["value", "Qualité / prix"],
   ],
 };
 
@@ -114,7 +112,7 @@ function RankCard({ item, rank, type, players, currentPlayer, rankingPlayer, onS
         <span style={{ minWidth: 28, fontWeight: 700 }}>{voteCount && rank < 3 ? medals[rank] : `#${rank + 1}`}</span>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 700 }}>{item.emoji || (type === "samossa" ? "🥟" : "🥤")} {item.name}</div>
-          <div style={{ fontSize: 12, color: "#6b7280", marginTop: 3 }}>📍 {item.vendor}</div>
+          {type === "samossa" && <div style={{ fontSize: 12, color: "#6b7280", marginTop: 3 }}>📍 {item.vendor}</div>}
         </div>
         <div style={{ textAlign: "right" }}>
           <strong style={{ fontSize: 22, color: voteCount ? "#f59e0b" : "#d1d5db" }}>
@@ -280,7 +278,7 @@ export default function App() {
     <main style={{ position: "relative", zIndex: 1, maxWidth: 720, margin: "0 auto", padding: "24px 16px 60px", fontFamily: "system-ui", minHeight: "100vh" }}>
       <header style={{ textAlign: "center", marginBottom: 22 }}>
         <div style={{ fontSize: 42 }}>🌴</div>
-        <h1 style={{ fontSize: 24, margin: "6px 0" }}>Classement Réunion</h1>
+        <h1 style={{ fontSize: 24, margin: "6px 0" }}>Sampok</h1>
         <p style={{ color: "#6b7280", fontSize: 13 }}>Samossas & Pokkas · notation détaillée sur 20</p>
         {syncing && <p style={{ color: "#6b7280", fontSize: 11 }}>Sauvegarde…</p>}
       </header>
