@@ -85,3 +85,38 @@ input {
 input:focus { box-shadow: 0 0 0 2px var(--color-border-info); }
 
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+
+.floating-food {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.floating-food span {
+  position: absolute;
+  display: block;
+  font-size: clamp(24px, 4vw, 42px);
+  opacity: 0.28;
+  filter: drop-shadow(0 3px 4px rgba(0,0,0,.12));
+  animation-delay: var(--delay);
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+.float-left-right { top: var(--position); animation: left-right 15s; }
+.float-right-left { top: var(--position); animation: right-left 18s; }
+.float-bottom-top { left: var(--position); animation: bottom-top 17s; }
+.float-top-bottom { left: var(--position); animation: top-bottom 20s; }
+.float-diagonal-down { animation: diagonal-down 22s; }
+.float-diagonal-up { animation: diagonal-up 24s; }
+
+@keyframes left-right { from { transform: translateX(-80px) rotate(0); } to { transform: translateX(calc(100vw + 80px)) rotate(540deg); } }
+@keyframes right-left { from { transform: translateX(calc(100vw + 80px)) rotate(0); } to { transform: translateX(-80px) rotate(-540deg); } }
+@keyframes bottom-top { from { transform: translateY(calc(100vh + 80px)) rotate(0); } to { transform: translateY(-80px) rotate(480deg); } }
+@keyframes top-bottom { from { transform: translateY(-80px) rotate(0); } to { transform: translateY(calc(100vh + 80px)) rotate(-480deg); } }
+@keyframes diagonal-down { from { transform: translate(-80px, -80px) rotate(0); } to { transform: translate(calc(100vw + 80px), calc(100vh + 80px)) rotate(720deg); } }
+@keyframes diagonal-up { from { transform: translate(calc(100vw + 80px), calc(100vh + 80px)) rotate(0); } to { transform: translate(-80px, -80px) rotate(-720deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .floating-food { display: none; }
+}

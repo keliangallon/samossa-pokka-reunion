@@ -48,6 +48,28 @@ function avgRating(item) {
   return scores.length ? scores.reduce((sum, value) => sum + value, 0) / scores.length : 0;
 }
 
+function displayedRating(item, rankingPlayer) {
+  return rankingPlayer === "team" ? avgRating(item) : ratingScore(item.ratings?.[rankingPlayer]);
+}
+
+function FloatingFood() {
+  const floaters = [
+    ["🥟", "float-left-right", "8%", "0s"],
+    ["🥤", "float-right-left", "20%", "-4s"],
+    ["🥟", "float-bottom-top", "14%", "-7s"],
+    ["🥤", "float-top-bottom", "82%", "-2s"],
+    ["🥟", "float-diagonal-down", "42%", "-9s"],
+    ["🥤", "float-diagonal-up", "68%", "-5s"],
+  ];
+  return (
+    <div className="floating-food" aria-hidden="true">
+      {floaters.map(([emoji, animation, position, delay], index) => (
+        <span key={index} className={animation} style={{ "--position": position, "--delay": delay }}>{emoji}</span>
+      ))}
+    </div>
+  );
+}
+
 function ScoreInput({ label, value, onChange }) {
   return (
     <label style={{ display: "grid", gridTemplateColumns: "130px 1fr 54px", alignItems: "center", gap: 10 }}>
@@ -65,7 +87,7 @@ function ScoreInput({ label, value, onChange }) {
   );
 }
 
-function RankCard({ item, rank, type, players, currentPlayer, onSave, onDelete }) {
+function RankCard({ item, rank, type, players, currentPlayer, rankingPlayer, onSave, onDelete }) {
   const criteria = CRITERIA[type];
   const saved = item.ratings?.[currentPlayer];
   const initial = Object.fromEntries(criteria.map(([key]) => [key, typeof saved === "object" ? saved[key] ?? 10 : 10]));
@@ -73,8 +95,11 @@ function RankCard({ item, rank, type, players, currentPlayer, onSave, onDelete }
   const [savedMessage, setSavedMessage] = useState(false);
 
   const total = ratingScore(draft);
-  const average = avgRating(item);
-  const voteCount = Object.keys(item.ratings || {}).length;
+  const average = displayedRating(item, rankingPlayer);
+  const visiblePlayers = rankingPlayer === "team" ? players : players.filter(player => player.id === rankingPlayer);
+  const voteCount = rankingPlayer === "team"
+    ? Object.keys(item.ratings || {}).length
+    : Number(Boolean(item.ratings?.[rankingPlayer]));
   const medals = ["🥇", "🥈", "🥉"];
 
   async function save() {
@@ -124,7 +149,7 @@ function RankCard({ item, rank, type, players, currentPlayer, onSave, onDelete }
       )}
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
-        {players.map(player => {
+        {visiblePlayers.map(player => {
           const score = ratingScore(item.ratings?.[player.id]);
           return score ? (
             <span key={player.id} style={{ fontSize: 11, background: "#f3f4f6", borderRadius: 6, padding: "3px 8px" }}>
@@ -149,6 +174,7 @@ export default function App() {
   const [pokkas, setPokkas] = useState(DEFAULT_POKKAS);
   const [players, setPlayers] = useState([]);
   const [currentPlayer, setCurrentPlayer] = useState(null);
+  const [rankingPlayer, setRankingPlayer] = useState("team");
   const [newPlayerName, setNewPlayerName] = useState("");
   const [newItemName, setNewItemName] = useState("");
   const [newItemVendor, setNewItemVendor] = useState("");
@@ -183,7 +209,10 @@ export default function App() {
   }, []);
 
   const items = tab === "samossa" ? samossas : pokkas;
-  const sortedItems = useMemo(() => [...items].sort((a, b) => avgRating(b) - avgRating(a)), [items]);
+  const sortedItems = useMemo(
+    () => [...items].sort((a, b) => displayedRating(b, rankingPlayer) - displayedRating(a, rankingPlayer)),
+    [items, rankingPlayer],
+  );
 
   async function saveRating(itemId, rating) {
     if (!currentPlayer) return;
@@ -245,7 +274,9 @@ export default function App() {
   const cardStyle = { background: "#fff", border: "1px solid #e5e7eb", borderRadius: 14, padding: 16 };
 
   return (
-    <main style={{ maxWidth: 720, margin: "0 auto", padding: "24px 16px 60px", fontFamily: "system-ui", minHeight: "100vh" }}>
+    <>
+    <FloatingFood />
+    <main style={{ position: "relative", zIndex: 1, maxWidth: 720, margin: "0 auto", padding: "24px 16px 60px", fontFamily: "system-ui", minHeight: "100vh" }}>
       <header style={{ textAlign: "center", marginBottom: 22 }}>
         <div style={{ fontSize: 42 }}>🌴</div>
         <h1 style={{ fontSize: 24, margin: "6px 0" }}>Classement Réunion</h1>
@@ -290,6 +321,32 @@ export default function App() {
         </button>
       </nav>
 
+      <section style={{ ...cardStyle, marginBottom: 14 }}>
+        <strong style={{ fontSize: 13 }}>Classement affiché</strong>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+          <button
+            onClick={() => setRankingPlayer("team")}
+            style={{ background: rankingPlayer === "team" ? "#dcfce7" : "#f3f4f6", fontWeight: rankingPlayer === "team" ? 700 : 400 }}
+          >
+            👥 Équipe
+          </button>
+          {players.map(player => (
+            <button
+              key={player.id}
+              onClick={() => setRankingPlayer(player.id)}
+              style={{ background: rankingPlayer === player.id ? "#dbeafe" : "#f3f4f6", fontWeight: rankingPlayer === player.id ? 700 : 400 }}
+            >
+              👤 {player.name}
+            </button>
+          ))}
+        </div>
+        <p style={{ color: "#6b7280", fontSize: 11, marginTop: 8 }}>
+          {rankingPlayer === "team"
+            ? "Moyenne de tous les avis."
+            : `Classement basé uniquement sur les notes de ${players.find(player => player.id === rankingPlayer)?.name || "cet utilisateur"}.`}
+        </p>
+      </section>
+
       <section style={{ display: "grid", gap: 12 }}>
         {sortedItems.map((item, index) => (
           <RankCard
@@ -299,6 +356,7 @@ export default function App() {
             type={tab}
             players={players}
             currentPlayer={currentPlayer}
+            rankingPlayer={rankingPlayer}
             onSave={saveRating}
             onDelete={deleteItem}
           />
@@ -323,5 +381,6 @@ export default function App() {
         )}
       </section>
     </main>
+    </>
   );
 }
