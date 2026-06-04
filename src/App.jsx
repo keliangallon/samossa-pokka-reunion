@@ -18,14 +18,17 @@ const DEFAULT_POKKAS = [
 
 const CRITERIA = {
   samossa: [
-    ["taste", "Goût"],
-    ["crispiness", "Croustillant"],
-    ["filling", "Farce"],
-    ["value", "Qualité / prix"],
+    ["taste", "Goût", "Appréciation générale de la saveur du samossa."],
+    ["crispiness", "Croustillant", "La pâte est-elle bien dorée et croustillante ?"],
+    ["filling", "Farce", "Qualité et générosité de la garniture."],
+    ["value", "Qualité / prix", "Le rapport entre le prix payé et le plaisir obtenu."],
   ],
   pokka: [
-    ["taste", "Goût"],
-    ["freshness", "Fraîcheur"],
+    ["taste", "Goût global", "Appréciation générale de la saveur."],
+    ["balance", "Équilibre", "Harmonie entre le thé et le fruit."],
+    ["aroma", "Intensité aromatique", "Force et présence du parfum."],
+    ["authenticity", "Authenticité", "Le fruit rappelle-t-il son goût naturel ?"],
+    ["drinkability", "Risque d'écœurement", "Peut-on boire une bouteille entière facilement ?"],
   ],
 };
 
@@ -69,10 +72,45 @@ function FloatingFood() {
   );
 }
 
-function ScoreInput({ label, value, onChange }) {
+function InfoTooltip({ text }) {
+  const [visible, setVisible] = useState(false);
   return (
-    <label style={{ display: "grid", gridTemplateColumns: "130px 1fr 54px", alignItems: "center", gap: 10 }}>
-      <span style={{ fontSize: 12, color: "#4b5563" }}>{label}</span>
+    <span style={{ position: "relative", display: "inline-flex", alignItems: "center", marginLeft: 5 }}>
+      <button
+        onClick={() => setVisible(v => !v)}
+        style={{
+          width: 16, height: 16, borderRadius: "50%", padding: 0, border: "1px solid #93c5fd",
+          background: "#dbeafe", color: "#1d4ed8", fontSize: 10, fontWeight: 700,
+          cursor: "pointer", lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center",
+          flexShrink: 0,
+        }}
+        aria-label="Plus d'infos"
+      >i</button>
+      {visible && (
+        <span style={{
+          position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)",
+          background: "#1e293b", color: "white", fontSize: 11, padding: "6px 10px",
+          borderRadius: 8, whiteSpace: "nowrap", zIndex: 10, maxWidth: 220, whiteSpace: "normal",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.2)", lineHeight: 1.4,
+        }}>
+          {text}
+          <span style={{
+            position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)",
+            borderWidth: 5, borderStyle: "solid", borderColor: "#1e293b transparent transparent transparent",
+          }} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+function ScoreInput({ label, description, value, onChange }) {
+  return (
+    <label style={{ display: "grid", gridTemplateColumns: "1fr 1fr 54px", alignItems: "center", gap: 10 }}>
+      <span style={{ fontSize: 12, color: "#4b5563", display: "flex", alignItems: "center" }}>
+        {label}
+        {description && <InfoTooltip text={description} />}
+      </span>
       <input
         type="range"
         min="0"
@@ -124,10 +162,11 @@ function RankCard({ item, rank, type, players, currentPlayer, rankingPlayer, onS
 
       {currentPlayer ? (
         <div style={{ borderTop: "1px solid #f3f4f6", marginTop: 14, paddingTop: 14, display: "grid", gap: 10 }}>
-          {criteria.map(([key, label]) => (
+          {criteria.map(([key, label, description]) => (
             <ScoreInput
               key={key}
               label={label}
+              description={description}
               value={draft[key]}
               onChange={value => {
                 setDraft(previous => ({ ...previous, [key]: value }));
