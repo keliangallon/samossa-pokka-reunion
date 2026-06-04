@@ -33,8 +33,8 @@ function avgRating(item) {
 }
 function toArray(obj) {
   if (!obj) return [];
-  if (Array.isArray(obj)) return obj;
-  return Object.values(obj);
+  const values = Array.isArray(obj) ? obj : Object.values(obj);
+  return values.filter(item => item && typeof item === "object");
 }
 const STARS = [1, 2, 3, 4, 5];
 

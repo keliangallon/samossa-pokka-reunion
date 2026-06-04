@@ -43,7 +43,8 @@ export function fbListen(path, callback) {
     es.addEventListener("put", (e) => {
       try {
         const parsed = JSON.parse(e.data);
-        if (parsed && parsed.data !== undefined) callback(parsed.data);
+        // Only replace a whole collection for root-level snapshots.
+        if (parsed?.path === "/" && parsed.data !== undefined) callback(parsed.data);
       } catch (err) { console.warn("fbListen parse error", err); }
     });
     es.onerror = () => {}; // silencieux
