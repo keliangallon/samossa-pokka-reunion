@@ -490,6 +490,26 @@ export default function App() {
           </button>
         )}
       </section>
+
+      {tab === "pokka" && (
+        <section style={{ marginTop: 14, padding: 14, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 12 }}>
+          <p style={{ fontSize: 12, color: "#991b1b", margin: "0 0 10px" }}>
+            ⚠️ Si les notes Pokka semblent inversées, clique ici pour remettre à zéro toutes les notes Pokka et recommencer proprement.
+          </p>
+          <button
+            onClick={async () => {
+              if (!window.confirm("Effacer toutes les notes Pokka ? Cette action est irréversible.")) return;
+              const resetPokkas = pokkas.map(p => ({ ...p, ratings: {} }));
+              setPokkas(resetPokkas);
+              await Promise.all(resetPokkas.map(p => fbSet(`pokkas/${p.id}/ratings`, {})));
+              alert("Notes effacées ! Vous pouvez revoter.");
+            }}
+            style={{ background: "#b91c1c", color: "white", borderColor: "#b91c1c", fontWeight: 700, fontSize: 13 }}
+          >
+            🗑️ Remettre à zéro les notes Pokka
+          </button>
+        </section>
+      )}
     </main>
     </>
   );
