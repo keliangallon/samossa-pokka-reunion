@@ -18,17 +18,17 @@ const DEFAULT_POKKAS = [
 
 const CRITERIA = {
   samossa: [
-    ["taste", "Goût", "Appréciation générale de la saveur du samossa."],
-    ["crispiness", "Croustillant", "La pâte est-elle bien dorée et croustillante ?"],
-    ["filling", "Farce", "Qualité et générosité de la garniture."],
-    ["value", "Qualité / prix", "Le rapport entre le prix payé et le plaisir obtenu."],
+    ["taste",      "Goût",           "Appréciation générale de la saveur du samossa.",              false],
+    ["crispiness", "Croustillant",   "La pâte est-elle bien dorée et croustillante ?",              false],
+    ["filling",    "Farce",          "Qualité et générosité de la garniture.",                      false],
+    ["value",      "Qualité / prix", "Le rapport entre le prix payé et le plaisir obtenu.",         false],
   ],
   pokka: [
-    ["taste", "Goût global", "Appréciation générale de la saveur."],
-    ["balance", "Équilibre", "Harmonie entre le thé et le fruit."],
-    ["aroma", "Intensité aromatique", "Force et présence du parfum."],
-    ["authenticity", "Authenticité", "Le fruit rappelle-t-il son goût naturel ?"],
-    ["drinkability", "Risque d'écœurement", "Peut-on boire une bouteille entière facilement ?"],
+    ["taste",         "Goût global",            "Appréciation générale de la saveur.",                                                        false],
+    ["balance",       "Équilibre",              "Harmonie entre le thé et le fruit.",                                                         false],
+    ["aroma",         "Intensité aromatique",   "Force et présence du parfum.",                                                               false],
+    ["authenticity",  "Authenticité",           "Le fruit rappelle-t-il son goût naturel ?",                                                  false],
+    ["drinkability",  "Risque d'écœurement",    "Plus le curseur monte, plus la boisson est écœurante — la note finale est inversée (20 − valeur).", true],
   ],
 };
 
@@ -38,19 +38,29 @@ function toArray(value) {
   return values.filter(item => item && typeof item === "object");
 }
 
-function ratingScore(rating) {
+function ratingScore(rating, type) {
   if (typeof rating === "number") return rating * 4;
-  const scores = Object.values(rating || {}).filter(value => typeof value === "number");
-  return scores.length ? scores.reduce((sum, value) => sum + value, 0) / scores.length : 0;
+  if (!rating || typeof rating !== "object") return 0;
+  const criteria = CRITERIA[type || "samossa"];
+  const scores = criteria.map(([key, , , inverted]) => {
+    const v = rating[key];
+    if (typeof v !== "number") return null;
+    return inverted ? 20 - v : v;
+  }).filter(v => v !== null);
+  return scores.length ? scores.reduce((sum, v) => sum + v, 0) / scores.length : 0;
 }
 
-function avgRating(item) {
-  const scores = Object.values(item.ratings || {}).map(ratingScore).filter(Boolean);
-  return scores.length ? scores.reduce((sum, value) => sum + value, 0) / scores.length : 0;
+function avgRating(item, type) {
+  const scores = Object.values(item.ratings || {}).map(r => ratingScore(r, type)).filter(Boolean);
+  return scores.length ? scores.reduce((sum, v) => sum + v, 0) / scores.length : 0;
 }
 
-function displayedRating(item, rankingPlayer) {
-  return rankingPlayer === "team" ? avgRating(item) : ratingScore(item.ratings?.[rankingPlayer]);
+function displayedRating(item, rankingPlayers, type) {
+  if (rankingPlayers === "all") return avgRating(item, type);
+  // array of selected player ids
+  const ids = Array.isArray(rankingPlayers) ? rankingPlayers : [rankingPlayers];
+  const scores = ids.map(id => ratingScore(item.ratings?.[id], type)).filter(Boolean);
+  return scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
 }
 
 function FloatingFood() {
@@ -104,7 +114,8 @@ function InfoTooltip({ text }) {
   );
 }
 
-function ScoreInput({ label, description, value, onChange }) {
+function ScoreInput({ label, description, value, onChange, inverted }) {
+  const displayed = inverted ? 20 - value : value;
   return (
     <label style={{ display: "grid", gridTemplateColumns: "1fr 1fr 54px", alignItems: "center", gap: 10 }}>
       <span style={{ fontSize: 12, color: "#4b5563", display: "flex", alignItems: "center" }}>
@@ -117,26 +128,30 @@ function ScoreInput({ label, description, value, onChange }) {
         max="20"
         value={value}
         onChange={event => onChange(Number(event.target.value))}
-        style={{ width: "100%" }}
+        style={{ width: "100%", accentColor: inverted ? "#ef4444" : "#1d4ed8" }}
       />
-      <strong style={{ textAlign: "right", color: "#1d4ed8" }}>{value}/20</strong>
+      <strong style={{ textAlign: "right", color: inverted ? "#ef4444" : "#1d4ed8" }}>
+        {displayed}/20{inverted ? " 🔻" : ""}
+      </strong>
     </label>
   );
 }
 
-function RankCard({ item, rank, type, players, currentPlayer, rankingPlayer, onSave, onDelete }) {
+function RankCard({ item, rank, type, players, currentPlayer, rankingPlayers, onSave, onDelete }) {
   const criteria = CRITERIA[type];
   const saved = item.ratings?.[currentPlayer];
   const initial = Object.fromEntries(criteria.map(([key]) => [key, typeof saved === "object" ? saved[key] ?? 10 : 10]));
   const [draft, setDraft] = useState(initial);
   const [savedMessage, setSavedMessage] = useState(false);
+  const [open, setOpen] = useState(false);
 
-  const total = ratingScore(draft);
-  const average = displayedRating(item, rankingPlayer);
-  const visiblePlayers = rankingPlayer === "team" ? players : players.filter(player => player.id === rankingPlayer);
-  const voteCount = rankingPlayer === "team"
+  const total = ratingScore(draft, type);
+  const average = displayedRating(item, rankingPlayers, type);
+  const allIds = Array.isArray(rankingPlayers) ? rankingPlayers : (rankingPlayers === "all" ? players.map(p => p.id) : [rankingPlayers]);
+  const visiblePlayers = players.filter(p => allIds.includes(p.id));
+  const voteCount = rankingPlayers === "all"
     ? Object.keys(item.ratings || {}).length
-    : Number(Boolean(item.ratings?.[rankingPlayer]));
+    : allIds.filter(id => item.ratings?.[id]).length;
   const medals = ["🥇", "🥈", "🥉"];
 
   async function save() {
@@ -145,63 +160,79 @@ function RankCard({ item, rank, type, players, currentPlayer, rankingPlayer, onS
   }
 
   return (
-    <article style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 14, padding: 16 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+    <article style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 14, overflow: "hidden" }}>
+      {/* Header cliquable */}
+      <div
+        onClick={() => setOpen(o => !o)}
+        style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: 16, cursor: "pointer",
+          userSelect: "none", transition: "background .15s",
+          background: open ? "#f8faff" : "#fff" }}
+      >
         <span style={{ minWidth: 28, fontWeight: 700 }}>{voteCount && rank < 3 ? medals[rank] : `#${rank + 1}`}</span>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 700 }}>{item.emoji || (type === "samossa" ? "🥟" : "🥤")} {item.name}</div>
           {type === "samossa" && <div style={{ fontSize: 12, color: "#6b7280", marginTop: 3 }}>📍 {item.vendor}</div>}
         </div>
-        <div style={{ textAlign: "right" }}>
-          <strong style={{ fontSize: 22, color: voteCount ? "#f59e0b" : "#d1d5db" }}>
-            {voteCount ? average.toFixed(1) : "—"}/20
-          </strong>
-          <div style={{ fontSize: 11, color: "#9ca3af" }}>{voteCount} avis</div>
+        <div style={{ textAlign: "right", display: "flex", alignItems: "center", gap: 10 }}>
+          <div>
+            <strong style={{ fontSize: 22, color: voteCount ? "#f59e0b" : "#d1d5db" }}>
+              {voteCount ? average.toFixed(1) : "—"}/20
+            </strong>
+            <div style={{ fontSize: 11, color: "#9ca3af" }}>{voteCount} avis</div>
+          </div>
+          <span style={{ fontSize: 14, color: "#9ca3af", transition: "transform .2s",
+            transform: open ? "rotate(180deg)" : "rotate(0deg)", display: "inline-block" }}>▾</span>
         </div>
       </div>
 
-      {currentPlayer ? (
-        <div style={{ borderTop: "1px solid #f3f4f6", marginTop: 14, paddingTop: 14, display: "grid", gap: 10 }}>
-          {criteria.map(([key, label, description]) => (
-            <ScoreInput
-              key={key}
-              label={label}
-              description={description}
-              value={draft[key]}
-              onChange={value => {
-                setDraft(previous => ({ ...previous, [key]: value }));
-                setSavedMessage(false);
-              }}
-            />
-          ))}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-            <strong style={{ marginRight: "auto" }}>Ta note globale : {total.toFixed(1)}/20</strong>
-            {savedMessage && <span style={{ fontSize: 12, color: "#16a34a" }}>Avis sauvegardé</span>}
-            <button onClick={save} style={{ background: "#1d4ed8", color: "white", borderColor: "#1d4ed8", fontWeight: 700 }}>
-              Sauvegarder l'avis
+      {/* Section notation — masquée par défaut */}
+      {open && (
+        <div style={{ borderTop: "1px solid #f3f4f6", padding: "14px 16px", display: "grid", gap: 10 }}>
+          {currentPlayer ? (
+            <>
+              {criteria.map(([key, label, description, inverted]) => (
+                <ScoreInput
+                  key={key}
+                  label={label}
+                  description={description}
+                  inverted={inverted}
+                  value={draft[key]}
+                  onChange={value => {
+                    setDraft(previous => ({ ...previous, [key]: value }));
+                    setSavedMessage(false);
+                  }}
+                />
+              ))}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+                <strong style={{ marginRight: "auto" }}>Ta note globale : {total.toFixed(1)}/20</strong>
+                {savedMessage && <span style={{ fontSize: 12, color: "#16a34a" }}>✓ Sauvegardé</span>}
+                <button onClick={save} style={{ background: "#1d4ed8", color: "white", borderColor: "#1d4ed8", fontWeight: 700 }}>
+                  Sauvegarder
+                </button>
+              </div>
+            </>
+          ) : (
+            <p style={{ fontSize: 12, color: "#9ca3af" }}>Ajoute un joueur pour noter.</p>
+          )}
+
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+            {visiblePlayers.map(player => {
+              const score = ratingScore(item.ratings?.[player.id], type);
+              return score ? (
+                <span key={player.id} style={{ fontSize: 11, background: "#f3f4f6", borderRadius: 6, padding: "3px 8px" }}>
+                  {player.name} : {score.toFixed(1)}/20
+                </span>
+              ) : null;
+            })}
+            <button
+              onClick={() => onDelete(item)}
+              style={{ marginLeft: "auto", padding: "4px 9px", fontSize: 11, color: "#b91c1c", background: "#fef2f2", borderColor: "#fecaca" }}
+            >
+              Supprimer
             </button>
           </div>
         </div>
-      ) : (
-        <p style={{ fontSize: 12, color: "#9ca3af", marginTop: 12 }}>Ajoute un joueur pour noter.</p>
       )}
-
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
-        {visiblePlayers.map(player => {
-          const score = ratingScore(item.ratings?.[player.id]);
-          return score ? (
-            <span key={player.id} style={{ fontSize: 11, background: "#f3f4f6", borderRadius: 6, padding: "3px 8px" }}>
-              {player.name} : {score.toFixed(1)}/20
-            </span>
-          ) : null;
-        })}
-        <button
-          onClick={() => onDelete(item)}
-          style={{ marginLeft: "auto", padding: "4px 9px", fontSize: 11, color: "#b91c1c", background: "#fef2f2", borderColor: "#fecaca" }}
-        >
-          Supprimer
-        </button>
-      </div>
     </article>
   );
 }
@@ -212,7 +243,7 @@ export default function App() {
   const [pokkas, setPokkas] = useState(DEFAULT_POKKAS);
   const [players, setPlayers] = useState([]);
   const [currentPlayer, setCurrentPlayer] = useState(null);
-  const [rankingPlayer, setRankingPlayer] = useState("team");
+  const [rankingPlayers, setRankingPlayers] = useState("all");
   const [newPlayerName, setNewPlayerName] = useState("");
   const [newItemName, setNewItemName] = useState("");
   const [newItemVendor, setNewItemVendor] = useState("");
@@ -248,8 +279,8 @@ export default function App() {
 
   const items = tab === "samossa" ? samossas : pokkas;
   const sortedItems = useMemo(
-    () => [...items].sort((a, b) => displayedRating(b, rankingPlayer) - displayedRating(a, rankingPlayer)),
-    [items, rankingPlayer],
+    () => [...items].sort((a, b) => displayedRating(b, rankingPlayers, tab) - displayedRating(a, rankingPlayers, tab)),
+    [items, rankingPlayers, tab],
   );
 
   async function saveRating(itemId, rating) {
@@ -360,28 +391,54 @@ export default function App() {
       </nav>
 
       <section style={{ ...cardStyle, marginBottom: 14 }}>
-        <strong style={{ fontSize: 13 }}>Classement affiché</strong>
+        <strong style={{ fontSize: 13 }}>Équipe — classement affiché pour :</strong>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+          {/* Bouton Tous */}
           <button
-            onClick={() => setRankingPlayer("team")}
-            style={{ background: rankingPlayer === "team" ? "#dcfce7" : "#f3f4f6", fontWeight: rankingPlayer === "team" ? 700 : 400 }}
+            onClick={() => setRankingPlayers("all")}
+            style={{
+              background: rankingPlayers === "all" ? "#dcfce7" : "#f3f4f6",
+              color: rankingPlayers === "all" ? "#16a34a" : "#374151",
+              borderColor: rankingPlayers === "all" ? "#86efac" : "#e5e7eb",
+              fontWeight: rankingPlayers === "all" ? 700 : 400,
+            }}
           >
-            👥 Équipe
+            👥 Tous
           </button>
-          {players.map(player => (
-            <button
-              key={player.id}
-              onClick={() => setRankingPlayer(player.id)}
-              style={{ background: rankingPlayer === player.id ? "#dbeafe" : "#f3f4f6", fontWeight: rankingPlayer === player.id ? 700 : 400 }}
-            >
-              👤 {player.name}
-            </button>
-          ))}
+          {/* Boutons individuels — multi-select */}
+          {players.map(player => {
+            const selected = Array.isArray(rankingPlayers) && rankingPlayers.includes(player.id);
+            return (
+              <button
+                key={player.id}
+                onClick={() => {
+                  setRankingPlayers(prev => {
+                    const current = Array.isArray(prev) ? prev : [];
+                    if (current.includes(player.id)) {
+                      const next = current.filter(id => id !== player.id);
+                      return next.length === 0 ? "all" : next;
+                    }
+                    return [...current, player.id];
+                  });
+                }}
+                style={{
+                  background: selected ? "#dbeafe" : "#f3f4f6",
+                  color: selected ? "#1d4ed8" : "#374151",
+                  borderColor: selected ? "#93c5fd" : "#e5e7eb",
+                  fontWeight: selected ? 700 : 400,
+                }}
+              >
+                👤 {player.name}
+              </button>
+            );
+          })}
         </div>
         <p style={{ color: "#6b7280", fontSize: 11, marginTop: 8 }}>
-          {rankingPlayer === "team"
-            ? "Moyenne de tous les avis."
-            : `Classement basé uniquement sur les notes de ${players.find(player => player.id === rankingPlayer)?.name || "cet utilisateur"}.`}
+          {rankingPlayers === "all"
+            ? "Moyenne de tous les joueurs."
+            : Array.isArray(rankingPlayers) && rankingPlayers.length === 1
+              ? `Classement basé sur les notes de ${players.find(p => p.id === rankingPlayers[0])?.name || "ce joueur"}.`
+              : `Moyenne des ${rankingPlayers.length} joueurs sélectionnés.`}
         </p>
       </section>
 
@@ -394,7 +451,7 @@ export default function App() {
             type={tab}
             players={players}
             currentPlayer={currentPlayer}
-            rankingPlayer={rankingPlayer}
+            rankingPlayers={rankingPlayers}
             onSave={saveRating}
             onDelete={deleteItem}
           />
