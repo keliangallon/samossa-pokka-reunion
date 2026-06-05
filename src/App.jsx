@@ -51,15 +51,18 @@ function ratingScore(rating, type) {
 }
 
 function avgRating(item, type) {
-  const scores = Object.values(item.ratings || {}).map(r => ratingScore(r, type)).filter(Boolean);
+  const scores = Object.values(item.ratings || {})
+    .map(r => ratingScore(r, type))
+    .filter(v => typeof v === "number" && !isNaN(v) && v > 0);
   return scores.length ? scores.reduce((sum, v) => sum + v, 0) / scores.length : 0;
 }
 
 function displayedRating(item, rankingPlayers, type) {
   if (rankingPlayers === "all") return avgRating(item, type);
-  // array of selected player ids
   const ids = Array.isArray(rankingPlayers) ? rankingPlayers : [rankingPlayers];
-  const scores = ids.map(id => ratingScore(item.ratings?.[id], type)).filter(Boolean);
+  const scores = ids
+    .map(id => ratingScore(item.ratings?.[id], type))
+    .filter(v => typeof v === "number" && !isNaN(v) && v > 0);
   return scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
 }
 
@@ -139,11 +142,23 @@ function ScoreInput({ label, description, value, onChange, inverted }) {
 
 function RankCard({ item, rank, type, players, currentPlayer, rankingPlayers, onSave, onDelete }) {
   const criteria = CRITERIA[type];
-  const saved = item.ratings?.[currentPlayer];
-  const initial = Object.fromEntries(criteria.map(([key]) => [key, typeof saved === "object" ? saved[key] ?? 10 : 10]));
-  const [draft, setDraft] = useState(initial);
+
+  function buildDraft(ratings, player) {
+    const saved = ratings?.[player];
+    return Object.fromEntries(
+      criteria.map(([key]) => [key, typeof saved === "object" && typeof saved[key] === "number" ? saved[key] : 10])
+    );
+  }
+
+  const [draft, setDraft] = useState(() => buildDraft(item.ratings, currentPlayer));
   const [savedMessage, setSavedMessage] = useState(false);
   const [open, setOpen] = useState(false);
+
+  // Resync draft quand Firebase met à jour les données ou qu'on change de joueur
+  useEffect(() => {
+    setDraft(buildDraft(item.ratings, currentPlayer));
+    setSavedMessage(false);
+  }, [currentPlayer, item.id, JSON.stringify(item.ratings?.[currentPlayer])]);
 
   const total = ratingScore(draft, type);
   const average = displayedRating(item, rankingPlayers, type);
