@@ -502,7 +502,7 @@ export default function App() {
             <div style={{ display: "grid", gap: 10 }}>
               <strong>Ajouter {tab === "samossa" ? "un samossa 🥟" : "un pokka 🥤"}</strong>
               <input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="Nom" />
-              <input value={newItemVendor} onChange={e => setNewItemVendor(e.target.value)} placeholder="Vendeur / snack" />
+              {tab === "samossa" && <input value={newItemVendor} onChange={e => setNewItemVendor(e.target.value)} placeholder="Vendeur / snack" />}
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => setShowAddItem(false)} style={{ flex: 1 }}>Annuler</button>
                 <button onClick={addItem} style={{ flex: 2, background: "#1d4ed8", color: "white" }}>Ajouter</button>
