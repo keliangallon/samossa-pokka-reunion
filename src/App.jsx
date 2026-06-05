@@ -1,6 +1,28 @@
 import { useEffect, useMemo, useState } from "react";
 import { fbGet, fbListen, fbSet } from "./firebase";
 
+// v6 — fix écœurement inversé
+
+// Clés inversées : stocker la liste pour lookup O(1)
+const INVERTED_KEYS = new Set(["drinkability"]);
+
+// Score d'un objet de notation brut {key: sliderValue}
+// Pour les clés inversées : score = 20 - sliderValue
+function ratingScore(rating, type) {
+  if (!rating || typeof rating !== "object") return 0;
+  const criteria = CRITERIA[type];
+  if (!criteria) return 0;
+  const vals = criteria
+    .map(([key]) => {
+      const v = rating[key];
+      if (typeof v !== "number") return null;
+      return INVERTED_KEYS.has(key) ? 20 - v : v;
+    })
+    .filter(v => v !== null);
+  if (!vals.length) return 0;
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
+}
+
 const DEFAULT_SAMOSSAS = [
   { id: 1, name: "Samossa bœuf épicé", vendor: "Marché de Saint-Paul", ratings: {}, emoji: "🥟" },
   { id: 2, name: "Samossa poulet citron", vendor: "Snack Ti'Bo – Saint-Denis", ratings: {}, emoji: "🥟" },
@@ -38,17 +60,7 @@ function toArray(value) {
   return values.filter(item => item && typeof item === "object");
 }
 
-function ratingScore(rating, type) {
-  if (!rating || typeof rating !== "object") return 0;
-  const criteria = CRITERIA[type || "samossa"];
-  const scores = criteria.map(([key, , , inverted]) => {
-    const v = rating[key];
-    if (typeof v !== "number") return null;
-    // Si critère inversé : 0 slider → 20 pts, 20 slider → 0 pts
-    return inverted ? (20 - v) : v;
-  }).filter(v => v !== null);
-  return scores.length ? scores.reduce((sum, v) => sum + v, 0) / scores.length : 0;
-}
+
 
 function avgRating(item, type) {
   const scores = Object.values(item.ratings || {})
