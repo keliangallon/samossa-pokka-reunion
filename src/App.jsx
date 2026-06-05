@@ -39,13 +39,13 @@ function toArray(value) {
 }
 
 function ratingScore(rating, type) {
-  if (typeof rating === "number") return rating * 4;
   if (!rating || typeof rating !== "object") return 0;
   const criteria = CRITERIA[type || "samossa"];
   const scores = criteria.map(([key, , , inverted]) => {
     const v = rating[key];
     if (typeof v !== "number") return null;
-    return inverted ? 20 - v : v;
+    // Si critère inversé : 0 slider → 20 pts, 20 slider → 0 pts
+    return inverted ? (20 - v) : v;
   }).filter(v => v !== null);
   return scores.length ? scores.reduce((sum, v) => sum + v, 0) / scores.length : 0;
 }
